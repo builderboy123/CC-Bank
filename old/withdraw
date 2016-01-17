@@ -1,0 +1,63 @@
+--[[
+    CC-Bank
+    Copyright © 2012  Yingtong Li
+
+    CC-Bank is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    CC-Bank is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CC-Bank.  If not, see <http://www.gnu.org/licenses/>.
+--]]
+
+local modemSide = "right"
+local clientId = 0
+local version = "CC-Bank-0.2.0-Compatible"
+
+local function serve()
+	rednet.open(modemSide)
+	local senderId, message = rednet.receive()
+
+	if senderId == clientId then
+		if string.len(message) >= string.len(version) then
+			if string.sub(message, 1, string.len(version)) == version then
+				local bits = textutils.unserialize(string.sub(message, string.len(version) + 1))
+				local command = bits[1]
+				local amount = tonumber(bits[2])
+				
+				if command == "WITHDRAW" then
+					local slot = 1
+					turtle.select(slot)
+					for i = 1, amount, 1 do
+						while turtle.getItemCount(slot) <= 0 do
+							if slot < 16 then
+								slot = slot + 1
+								turtle.select(slot)
+							else
+								rednet.send(senderId, "-")
+								return
+							end
+						end
+						
+						turtle.drop(1)
+					end
+					rednet.send(senderId, "+")
+				elseif command == "DEPOSIT" then
+					-- Depositing cannot be implemented until turtle.suck() takes a number
+					rednet.send(senderId, "-")
+				end
+			end
+			rednet.send(senderId, "-")
+		end
+	end
+end
+
+while true do
+	serve()
+end

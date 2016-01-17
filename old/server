@@ -1,0 +1,119 @@
+--[[
+    CC-Bank
+    Copyright © 2012  Yingtong Li
+
+    CC-Bank is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    CC-Bank is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CC-Bank.  If not, see <http://www.gnu.org/licenses/>.
+--]]
+
+os.loadAPI("crypt")
+
+local modemSide = "left"
+local version = "CC-Bank-0.2.0-Compatible"
+
+local function log(level, info)
+	local severity = "?"
+	if level == 1 then	severity = "INFO"	end
+	if level == 2 then	severity = "WARNING"	end
+	if level == 3 then	severity = "ERROR"	end
+	print("[" .. severity .. "] " .. textutils.formatTime(os.time()) .. " - " .. info)
+end
+
+local function serve()
+	rednet.open(modemSide)
+	local senderId, message = rednet.receive()
+
+	if string.len(message) >= string.len(version) then
+		if string.sub(message, 1, string.len(version)) == version then
+			local bits = textutils.unserialize(string.sub(message, string.len(version) + 1))
+			local command = bits[1]
+			local acc = bits[2]
+			local pass = bits[3]
+
+			log (1, command .. " from " .. acc)
+
+			if command == "BALANCE" then
+				if fs.exists("acc/" .. acc .. ".txt") then
+					local file = fs.open("acc/" .. acc .. ".txt", "r")
+					local passC = file.readLine()
+					local bal = file.readLine()
+					file.close()
+
+					if crypt.checkPassword(pass, passC) then
+						rednet.send(senderId, bal)
+						return
+					end
+				end
+			elseif command == "TRANSFER" then
+				local dest = bits[4]
+				local amt = tonumber(bits[5])
+				if fs.exists("acc/" .. acc .. ".txt") and fs.exists("acc/" .. dest .. ".txt") then
+					local fileFrom = fs.open("acc/" .. acc .. ".txt", "r")
+					local passC = fileFrom.readLine()
+					local bal = tonumber(fileFrom.readLine())
+					fileFrom.close()
+
+					local fileTo = fs.open("acc/" .. dest .. ".txt", "r")
+					local passT = fileTo.readLine()
+					local balT = tonumber(fileTo.readLine())
+					fileTo.close()
+
+					if crypt.checkPassword(pass, passC) and bal >= amt then
+						fileFrom = fs.open("acc/" .. acc .. ".txt", "w")
+						fileTo = fs.open("acc/" .. dest .. ".txt", "w")
+
+						fileFrom.writeLine(passC)
+						fileFrom.writeLine(bal - amt)
+						fileFrom.close()
+
+						fileTo.writeLine(passT)
+						fileTo.writeLine(balT + amt)
+						fileTo.close()
+
+						log (1, "Transferred " .. amt .. " from " .. acc .. " to " .. dest)
+
+						rednet.send(senderId, "+")
+						return
+					end
+				end
+			elseif command == "WITHDRAW" then
+				local amt = tonumber(bits[4])
+				if fs.exists("acc/" .. acc .. ".txt") then
+					local file = fs.open("acc/" .. acc .. ".txt", "r")
+					local passC = file.readLine()
+					local bal = tonumber(file.readLine())
+					file.close()
+
+					if crypt.checkPassword(pass, passC) and bal >= amt then
+						file = fs.open("acc/" .. acc .. ".txt", "w")
+
+						file.writeLine(passC)
+						file.writeLine(bal - amt)
+						file.close()
+
+						log (1, "Withdrew " .. amt .. " from " .. acc)
+
+						rednet.send(senderId, "+")
+						return
+					end
+				end
+			end
+		end
+		log (2, "Request denied")
+		rednet.send(senderId, "-")
+	end
+end
+
+while true do
+	serve()
+end

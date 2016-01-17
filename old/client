@@ -1,0 +1,327 @@
+--[[
+    CC-Bank
+    Copyright © 2012  Yingtong Li
+
+    CC-Bank is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    CC-Bank is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CC-Bank.  If not, see <http://www.gnu.org/licenses/>.
+--]]
+
+os.loadAPI("crypt")
+os.loadAPI("gui")
+
+local textStart = gui.textStart
+local modemSide = "back"
+local diskSide = "right"
+local serverId = 1
+local withdrawId = 2
+local version = "CC-Bank-0.2.0-Compatible"
+
+-- Import GUI functions
+local drawHeader, drawButtons, drawButton, drawError, center = gui.drawHeader, gui.drawButtons, gui.drawButton, gui.drawError, gui.center
+local waitForMouse, waitForButton, waitForChar, waitForKey, waitForEnter = gui.waitForMouse, gui.waitForButton, gui.waitForChar, gui.waitForKey, gui.waitForEnter
+local waitForDisk = gui.waitForDisk
+
+function otherAmount()
+	local amount = ""
+	term.clear()	drawHeader()
+	term.setCursorPos(center(textStart, "Amount : MC$   ") + 12, textStart)
+	return read()
+end
+
+function balance(acc, pin)
+	term.clear()	drawHeader()	drawButtons()
+
+	drawButton(4, "Cancel")
+	drawButton(5, "MC Dollars")
+	drawButton(6, "Gold Ingots")
+
+	local mult = nil
+	while true do
+		local button = waitForButton()
+		if     button == 4 then		return
+		elseif button == 5 then		mult = 1		break
+		elseif button == 6 then		mult = 1/100	break
+		end
+	end
+
+	local senderId, response = nil, nil
+	rednet.open(modemSide)
+
+	rednet.send(serverId, version .. textutils.serialize( { "BALANCE", acc, crypt.hashPassword(pin) } ) )
+
+	while true do
+		senderId, response = rednet.receive(5)
+		if senderId == serverId then	break	end
+	end
+	rednet.close(modemSide)
+
+	term.clear()	drawHeader()	drawButtons()
+	drawButton(8, "OK")
+
+	if response ~= "-" then
+		local displayBalance = math.floor(tonumber(response) * mult * 100) / 100
+		center(textStart, "Balance: " .. displayBalance)
+	else
+		drawError("Transaction Error")
+	end
+
+	while true do
+		local button = waitForButton()
+		if     button == 8 then		return		end
+	end
+end
+
+function transfer(acc, pin)
+	term.clear()	drawHeader()	drawButtons()
+
+	drawButton(1, "MC$100")
+	drawButton(2, "MC$200")
+	drawButton(3, "MC$500")
+	drawButton(5, "MC$1000")
+	drawButton(6, "MC$2000")
+	drawButton(7, "MC$5000")
+
+	drawButton(4, "Cancel")
+	drawButton(8, "Other Amount")
+
+	local amountS = nil
+	while true do
+		local button = waitForButton()
+		if     button == 1 then		amountS = "100"			break
+		elseif button == 2 then		amountS = "200"			break
+		elseif button == 3 then		amountS = "500"			break
+		elseif button == 5 then		amountS = "1000"		break
+		elseif button == 6 then		amountS = "2000"		break
+		elseif button == 7 then		amountS = "5000"		break
+		elseif button == 4 then		return
+		elseif button == 8 then		amountS = otherAmount()	break
+		end
+	end
+
+	term.clear()	drawHeader()	drawButtons()
+
+	local amount = tonumber(amountS)
+	if amount ~= nil and (amount % 1) == 0 then
+		term.clear()	drawHeader()
+		term.setCursorPos(center(textStart, "Amount : MC$   ") + 12, textStart)
+		term.write(amountS)
+		term.setCursorPos(center(textStart + 1, "Account :        ") + 10, textStart + 1)
+		local account = read()
+
+		drawButtons()
+		drawButton(4, "Cancel")
+		drawButton(8, "Confirm")
+
+		while true do
+			local button = waitForButton()
+			if     button == 4 then		return
+			elseif button == 8 then		break
+			end
+		end
+
+		local senderId, response = nil, nil
+		rednet.open(modemSide)
+
+		rednet.send(serverId, version .. textutils.serialize( { "TRANSFER", acc, crypt.hashPassword(pin), account, amountS } ) )
+
+		while true do
+			senderId, response = rednet.receive(5)
+			if senderId == serverId then	break	end
+		end
+		rednet.close(modemSide)
+
+		term.clear()	drawHeader()	drawButtons()
+
+		if response ~= "-" then
+			center(textStart, "Transfer Successful")
+		else
+			drawError("Transaction Error")
+		end
+
+	else
+		term.clear()	drawHeader()	drawButtons()
+		drawError("Invalid Amount")
+
+		--[[
+		while true do
+			local button = waitForButton()
+			if     button == 8 then		return		end
+		end
+		--]]
+	end
+
+	drawButton(8, "OK")
+	while true do
+		local button = waitForButton()
+		if     button == 8 then		return		end
+	end
+end
+
+function withdraw(acc, pin)
+	term.clear()	drawHeader()	drawButtons()
+
+	drawButton(1, "MC$100")
+	drawButton(2, "MC$200")
+	drawButton(3, "MC$500")
+	drawButton(5, "MC$1000")
+	drawButton(6, "MC$2000")
+	drawButton(7, "MC$5000")
+
+	drawButton(4, "Cancel")
+	drawButton(8, "Other Amount")
+
+	local amountS = nil
+	while true do
+		local button = waitForButton()
+		if     button == 1 then		amountS = "100"			break
+		elseif button == 2 then		amountS = "200"			break
+		elseif button == 3 then		amountS = "500"			break
+		elseif button == 5 then		amountS = "1000"		break
+		elseif button == 6 then		amountS = "2000"		break
+		elseif button == 7 then		amountS = "5000"		break
+		elseif button == 4 then		return
+		elseif button == 8 then		amountS = otherAmount()	break
+		end
+	end
+
+	term.clear()	drawHeader()	drawButtons()
+
+	local amount = tonumber(amountS)
+	if amount ~= nil and (amount % 100) == 0 then
+		term.clear()	drawHeader()
+		term.setCursorPos(center(textStart, "Amount : MC$   ") + 12, textStart)
+		term.write(amountS)
+		drawButtons()
+		drawButton(4, "Cancel")
+		drawButton(8, "Confirm")
+
+		while true do
+			local button = waitForButton()
+			if     button == 4 then		return
+			elseif button == 8 then		break
+			end
+		end
+
+		local senderId, response = nil, nil
+		rednet.open(modemSide)
+
+		rednet.send(serverId, version .. textutils.serialize( { "WITHDRAW", acc, crypt.hashPassword(pin), amountS } ) )
+
+		while true do
+			senderId, response = rednet.receive(5)
+			if senderId == serverId then	break	end
+		end
+		rednet.close(modemSide)
+
+		term.clear()	drawHeader()
+
+		if response ~= "-" then
+			center(textStart, "Withdrawing " .. (amount / 100) .. " gold ingots")
+			rednet.open(modemSide)
+			rednet.send(withdrawId, version .. textutils.serialize( { "WITHDRAW", (amount/100) .. "" } ) )
+			
+			while true do
+				senderId, response = rednet.receive(5)
+				if senderId == withdrawId then	break	end
+			end
+			rednet.close(modemSide)
+			
+			term.clear()	drawHeader()
+			if response ~= "-" then
+				center(textStart, "Please take your cash")
+				sleep(2)
+				return
+			else
+				drawButtons()
+				drawError("Withdrawal Error")
+			end
+		else
+			drawError("Transaction Error")
+		end
+
+	else
+		term.clear()	drawHeader()	drawButtons()
+		drawError("Invalid Amount")
+
+		--[[
+		while true do
+			local button = waitForButton()
+			if     button == 8 then		return		end
+		end
+		--]]
+	end
+
+	drawButton(8, "OK")
+	while true do
+		local button = waitForButton()
+		if     button == 8 then		return		end
+	end
+end
+
+function bank(acc, pin)
+	while true do
+		term.clear()	drawHeader()	drawButtons()
+
+		drawButton(4, "Return Card")
+		drawButton(5, "Balance Check")
+		drawButton(6, "Withdrawal")
+		drawButton(7, "Deposit")
+		drawButton(8, "Transfer")
+
+		local button = waitForButton()
+		if     button == 4 then		return
+		elseif button == 5 then		balance(acc, pin)
+		elseif button == 6 then		withdraw(acc, pin)
+		--elseif button == 7 then		deposit(acc, pin)
+		elseif button == 8 then		transfer(acc, pin)
+		end
+	end
+end
+
+function begin()
+	local acc, pin
+
+	term.clear()	drawHeader()
+
+	center(textStart, "Insert keycard or press ENTER")
+	center(textStart + 1, "to transact without a keycard")
+	parallel.waitForAny(waitForEnter, waitForDisk)
+
+	term.clear()	drawHeader()
+
+	term.setCursorPos(center(textStart, "Account No :           ") + 13, textStart)
+
+	if disk.hasData(diskSide) then
+		acc = disk.getLabel(diskSide)
+		term.write(acc)
+	else
+		acc = read()
+	end
+
+	term.setCursorPos(center(textStart + 1, "PIN :    ") + 6, textStart + 1)
+	pin = read("*")
+
+	bank(acc, pin)
+
+	term.clear()	drawHeader()
+	
+	disk.eject(diskSide)
+	center(textStart, "Thankyou for banking with CBM")
+	center(textStart + 1, "Please take your keycard")
+
+	sleep(2)
+end
+
+while true do
+	begin()
+end

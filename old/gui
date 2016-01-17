@@ -1,0 +1,187 @@
+--[[
+    CC-Bank
+    Copyright © 2012  Yingtong Li
+
+    CC-Bank is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    CC-Bank is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CC-Bank.  If not, see <http://www.gnu.org/licenses/>.
+--]]
+
+ret1, ret2 = nil, nil --return for parallel functions
+
+textStart = 11
+
+function drawHeader()
+	-- Big C
+	term.setBackgroundColor(colors.lightBlue)
+	term.setCursorPos(3, 2)			term.write("    ")
+	term.setCursorPos(2, 3)			term.write(" ")
+	term.setCursorPos(2, 4)			term.write(" ")
+	term.setCursorPos(2, 5)			term.write(" ")
+	term.setCursorPos(3, 6)			term.write("    ")
+
+	-- Big B
+	term.setBackgroundColor(colors.orange)
+	term.setCursorPos(4, 7)			term.write(" ")
+	term.setCursorPos(7, 7)			term.write(" ")
+	term.setCursorPos(4, 8)			term.write("   ")
+
+	-- Big M
+	term.setBackgroundColor(colors.lime)
+	term.setCursorPos(4, 4)			term.write("   ")
+	term.setCursorPos(8, 4)			term.write("   ")
+	term.setCursorPos(4, 5)			term.write(" ")
+	term.setCursorPos(7, 5)			term.write(" ")
+	term.setCursorPos(10, 5)		term.write(" ")
+	term.setCursorPos(10, 6)		term.write(" ")
+
+	-- Text
+	term.setBackgroundColor(colors.black)
+	term.setCursorPos(13, 5)		term.write("Construction Bank of Minecraft")
+	term.setCursorPos(38, 2)		term.write("CC-Bank 0.2.0")
+
+	term.setBackgroundColor(colors.black)
+end
+
+function drawButtons()
+	term.setBackgroundColor(colors.lightGray)
+	term.setCursorPos(3, textStart)		term.write("  ")
+	term.setCursorPos(3, textStart + 2)	term.write("  ")
+	term.setCursorPos(3, textStart + 4)	term.write("  ")
+	term.setCursorPos(3, textStart + 6)	term.write("  ")
+
+	term.setCursorPos(48, textStart)	term.write("  ")
+	term.setCursorPos(48, textStart + 2)	term.write("  ")
+	term.setCursorPos(48, textStart + 4)	term.write("  ")
+	term.setCursorPos(48, textStart + 6)	term.write("  ")
+
+	term.setBackgroundColor(colors.black)
+end
+
+function drawButton(button, text)
+	local x, y
+	if button == 1 then	x = 6		y = textStart		end
+	if button == 2 then	x = 6		y = textStart + 2	end
+	if button == 3 then	x = 6		y = textStart + 4	end
+	if button == 4 then	x = 6		y = textStart + 6	end
+
+	if button == 5 then	x = 47 - #text	y = textStart		end
+	if button == 6 then	x = 47 - #text	y = textStart + 2	end
+	if button == 7 then	x = 47 - #text	y = textStart + 4	end
+	if button == 8 then	x = 47 - #text	y = textStart + 6	end
+
+	term.setCursorPos(x, y)
+	term.write(text)
+end
+
+function drawError(error)
+	-- Outer Triangle
+	term.setBackgroundColor(colors.red)
+	term.setCursorPos(12, textStart)			term.write(" ")
+	term.setCursorPos(11, textStart + 1)		term.write(" ")
+	term.setCursorPos(10, textStart + 2)		term.write(" ")
+	term.setCursorPos(9, textStart + 3)			term.write(" ")
+	term.setCursorPos(8, textStart + 4)			term.write(" ")
+	term.setCursorPos(7, textStart + 5)			term.write(" ")
+	term.setCursorPos(6, textStart + 6)			term.write("             ")
+
+	term.setCursorPos(13, textStart + 1)		term.write(" ")
+	term.setCursorPos(14, textStart + 2)		term.write(" ")
+	term.setCursorPos(15, textStart + 3)		term.write(" ")
+	term.setCursorPos(16, textStart + 4)		term.write(" ")
+	term.setCursorPos(17, textStart + 5)		term.write(" ")
+
+	-- Inner Triangle
+	term.setBackgroundColor(colors.white)
+	term.setCursorPos(12, textStart + 1)		term.write(" ")
+	term.setCursorPos(11, textStart + 2)		term.write("   ")
+	term.setCursorPos(10, textStart + 3)		term.write("     ")
+	term.setCursorPos(9, textStart + 4)			term.write("       ")
+	term.setCursorPos(8, textStart + 5)			term.write("         ")
+
+	-- !
+	term.setBackgroundColor(colors.black)
+	term.setCursorPos(12, textStart + 2)		term.write(" ")
+	term.setCursorPos(12, textStart + 3)		term.write(" ")
+	term.setCursorPos(12, textStart + 5)		term.write(" ")
+
+	-- Text
+	term.setBackgroundColor(colors.black)
+	term.setCursorPos(20, textStart)			term.write(error)
+
+	term.setBackgroundColor(colors.black)
+end
+
+function center(y, sText)
+	local w, h = term.getSize()
+	x = math.max(math.floor((w - #sText) / 2), 0)
+	term.setCursorPos(x, y)
+	print(sText)
+	return x
+end
+
+function waitForMouse()
+	while true do
+		local event, p1, p2, p3 = os.pullEvent("mouse_click")
+		if p1 == 1 then
+			ret1, ret2 = p2, p3
+			return p2, p3
+		end
+	end
+end
+
+function waitForButton()
+	while true do
+		local mx, my = waitForMouse()
+		if my == textStart and mx >= 3 and mx <= 4 then			ret1 = 1	return 1	end
+		if my == textStart + 2 and mx >= 3 and mx <= 4 then		ret1 = 2	return 2	end
+		if my == textStart + 4 and mx >= 3 and mx <= 4 then		ret1 = 3	return 3	end
+		if my == textStart + 6 and mx >= 3 and mx <= 4 then		ret1 = 4	return 4	end
+
+		if my == textStart and mx >= 48 and mx <= 49 then		ret1 = 5	return 5	end
+		if my == textStart + 2 and mx >= 48 and mx <= 49 then		ret1 = 6	return 6	end
+		if my == textStart + 4 and mx >= 48 and mx <= 49 then		ret1 = 7	return 7	end
+		if my == textStart + 6 and mx >= 48 and mx <= 49 then		ret1 = 8	return 8	end
+	end
+end
+
+function waitForChar()
+	while true do
+		local event, p1 = os.pullEvent("char")
+		ret1 = p1
+		return p1
+	end
+end
+
+function waitForKey()
+	while true do
+		local event, p1 = os.pullEvent("key")
+		ret1 = p1
+		return p1
+	end
+end
+
+function waitForEnter()
+	while true do
+		local p1 = waitForKey()
+		if p1 == 28 then
+			return
+		end
+	end
+end
+
+function waitForDisk()
+	while true do
+		local event, p1 = os.pullEvent("disk")
+		return
+	end
+end
